@@ -1,0 +1,58 @@
+{
+  "oekologie_nachhaltigkeit": {
+    "description": "Begriffe, die ökologische, nachhaltige oder klimapolitische Themen adressieren.",
+    "keywords": [
+      "Nachhaltigkeit",
+      "nachhaltig",
+      "Klimaschutz",
+      "Klimawandel",
+      "Biodiversität",
+      "Umweltschutz",
+      "Ökologie",
+      "ökologisch",
+      "Energiewende",
+      "Erneuerbare Energien",
+      "Solarenergie",
+      "Windenergie",
+      "Wasserkraft",
+      "CO2-Reduktion",
+      "Emission",
+      "Treibhausgas",
+      "Dekarbonisierung",
+      "Ressourcenschutz",
+      "Kreislaufwirtschaft",
+      "Umweltpolitik",
+      "Ökosystem",
+      "Artenschutz",
+      "Naturschutz",
+      "Klimaneutralität",
+      "Energieeffizienz"
+    ]
+  },
+
+  "sicherheit_resilienz": {
+    "description": "Begriffe, die Sicherheit, Versorgungssicherheit oder Resilienz thematisieren.",
+    "keywords": [
+      "Resilienz",
+      "resilient",
+      "Sicherheit",
+      "Versorgungssicherheit",
+      "Energiesicherheit",
+      "Ernährungssicherheit",
+      "Krisenvorsorge",
+      "Krisenfestigkeit",
+      "Systemstabilität",
+      "Widerstandsfähigkeit",
+      "Notfallplan",
+      "Risikomanagement",
+      "Kritische Infrastruktur",
+      "Selbstversorgung",
+      "Autarkie",
+      "Unabhängigkeit",
+      "Verteidigung",
+      "Zivilschutz",
+      "Gefahrenabwehr",
+      "Sicherheitsstrategie"
+    ]
+  }
+}
