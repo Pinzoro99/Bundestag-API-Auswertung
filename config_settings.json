@@ -1,0 +1,36 @@
+{
+  "api_base_url": "https://search.dip.bundestag.de/api/v1",
+
+  "endpoints": {
+    "drucksache": "/drucksache",
+    "vorgang": "/vorgang"
+  },
+
+  "date_range": {
+    "from": "2019-01-01",
+    "to": "2025-11-03"
+  },
+
+  "request_params": {
+    "rows": 100,
+    "cursor": "*"
+  },
+
+  "auth": {
+    "use_env_var": true,
+    "env_var_name": "DIP_API_KEY"
+  },
+
+  "storage": {
+    "raw_data_path": "data/raw/",
+    "processed_data_path": "data/processed/",
+    "results_path": "data/results/"
+  },
+
+  "logging": {
+    "enable_console_output": true,
+    "log_file": "logs/api_fetch.log"
+  },
+
+  "notes": "Diese Konfigurationsdatei definiert die grundlegenden Parameter für den Abruf und die Speicherung von Bundestags-Dokumenten über die DIP-API. Der Zeitraum wird dynamisch gelesen und kann bei Bedarf angepasst werden."
+}
