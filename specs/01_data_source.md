@@ -1,7 +1,7 @@
 # 01 – Data Source (Bundestag DIP API)
 
 **Ziel:**  
-Abruf von Bundestagsdokumenten, die politische Themensetzungen abbilden, für eine Diskursverschiebungsanalyse (Ökologie/Nachhaltigkeit → Sicherheit/Resilienz).
+Abruf von Bundestagsdokumenten, die politische Themensetzungen abbilden, um die zeitliche Entwicklung der Begriffshäufigkeit in zwei Themenclustern (Ökologie/Nachhaltigkeit und Sicherheit/Resilienz) quantitativ zu analysieren.
 
 ---
 
@@ -10,7 +10,7 @@ Abruf von Bundestagsdokumenten, die politische Themensetzungen abbilden, für ei
 - Offizielle Dokumentation: [https://search.dip.bundestag.de/api/v1/swagger-ui/#/](https://search.dip.bundestag.de/api/v1/swagger-ui/#/)
 - Hintergrundinfos: [https://dip.bundestag.de/über-dip/hilfe/api](https://dip.bundestag.de/über-dip/hilfe/api)
 
-**Basis-URL:**
+**Basis-URL:**  
 https://search.dip.bundestag.de/api/v1
 
 ---
@@ -45,30 +45,36 @@ Der Zeitraum wird in der Datei `config/settings.json` unter dem Schlüssel `date
 - Die Bundestags-DIP-API ist öffentlich zugänglich.
 - API-Key (laut offizieller Doku) wird als Parameter oder Header übergeben.
 - Name der Umgebungsvariable: `DIP_API_KEY`
-- Beispiel für `.env.example`: DIP_API_KEY=OSOegLs.PR2lwJ1dwCeje9vTj7FPOt3hvpYKtwKkhw
+- Beispiel für `.env.example`:  
+  ```
+  DIP_API_KEY=OSOegLs.PR2lwJ1dwCeje9vTj7FPOt3hvpYKtwKkhw
+  ```
 
 ---
 
 ## Erwartete Rückgabefelder (Beispiele)
 
+Diese Felder werden genutzt, um Textbestandteile für die Frequenzanalyse zu extrahieren (z. B. Titel, Abstract, Schlagwörter). Eine Klassifikation der Dokumente erfolgt nicht.
+
 **Drucksache (Beispiel):**
 ```json
 {
-"drucksacheId": "12345",
-"vorgangsId": "9876",
-"titel": "Gesetz zur Stärkung der Versorgungssicherheit",
-"abstract": "Die Bundesregierung berichtet über Maßnahmen zur Energieversorgung...",
-"datum": "2023-02-14",
-"typ": "Große Anfrage",
-"urheber": ["Fraktion Bündnis 90/Die Grünen"],
-"sachgebiet": ["Energie", "Landwirtschaft"],
-"schlagwort": ["Versorgungssicherheit", "Klimaschutz"]
+  "drucksacheId": "<Beispiel-ID>",
+  "vorgangsId": "<Beispiel-Vorgangs-ID>",
+  "titel": "Gesetz zur Stärkung der Versorgungssicherheit",
+  "abstract": "Die Bundesregierung berichtet über Maßnahmen zur Energieversorgung...",
+  "datum": "2023-02-14",
+  "typ": "Große Anfrage",
+  "urheber": ["Fraktion Bündnis 90/Die Grünen"],
+  "sachgebiet": ["Energie", "Landwirtschaft"],
+  "schlagwort": ["Versorgungssicherheit", "Klimaschutz"]
 }
+```
 
-Vorgang (Beispiel):
-json
+**Vorgang (Beispiel):**
+```json
 {
-  "vorgangsId": "9876",
+  "vorgangsId": "<Beispiel-Vorgangs-ID>",
   "vorgangstyp": "Gesetzgebung",
   "titel": "Gesetz zur Stärkung der Resilienz der Landwirtschaft",
   "initiative": ["Bundesregierung"],
@@ -77,4 +83,11 @@ json
   "schlagwort": ["Resilienz", "Nachhaltigkeit"],
   "legislaturperiode": 20
 }
+```
 
+---
+
+## Hinweis
+
+Die Skripte sollen beide Endpunkte getrennt abrufen, die Ergebnisse als JSON speichern und später über die gemeinsame ID `vorgangsId` verknüpfen.  
+Die Daten bilden die Grundlage für die spätere Frequenzanalyse der definierten Themencluster.
