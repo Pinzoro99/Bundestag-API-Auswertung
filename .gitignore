@@ -1,0 +1,25 @@
+# Ignoriere API-Schlüssel und Umgebungsvariablen
+.env
+.env.*
+
+# Ignoriere Logdateien
+logs/
+*.log
+
+# Ignoriere temporäre und lokale Daten
+data/raw/
+data/processed/
+data/results/
+
+# Ignoriere Systemdateien (Windows / macOS / VSCode / Python)
+.DS_Store
+Thumbs.db
+.vscode/
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+
+# Ignoriere temporäre Dateien von Editoren
+*.swp
+*.tmp
