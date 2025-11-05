@@ -17,6 +17,9 @@ import time
 import requests
 from datetime import datetime
 from utils import setup_logging, save_json
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # TODO:
 # 1. settings.json laden
