@@ -20,27 +20,13 @@ ECO_TERMS = ["nachhaltigkeit", "klima", "ökologie", "umweltschutz", "erneuerbar
 SEC_TERMS = ["sicherheit", "resilienz", "krise", "notfall", "vorsorge"]
 
 def extract_schlagworte(doc):
-    """Extrahiert Schlagworte aus dem Dokument (robust für verschiedene Strukturen)."""
+    """Extrahiert Schlagworte aus dem Dokument (kleingeschrieben)."""
     terms = []
-
-    # Mögliche Schlüssel im Dokument
-    keys = ["schlagworte", "schlagwort"]
-
-    for key in keys:
-        if key not in doc:
-            continue
-        value = doc[key]
-        if isinstance(value, list):
-            for s in value:
-                if isinstance(s, dict) and "begriff" in s:
-                    terms.append(s["begriff"].lower())
-                elif isinstance(s, str):
-                    terms.append(s.lower())
-        elif isinstance(value, dict) and "begriff" in value:
-            terms.append(value["begriff"].lower())
-        elif isinstance(value, str):
-            terms.append(value.lower())
-
+    for s in doc.get("schlagworte", []):
+        if isinstance(s, dict) and "begriff" in s:
+            terms.append(s["begriff"].lower())
+        elif isinstance(s, str):
+            terms.append(s.lower())
     return terms
 
 def analyze_documents():
