@@ -15,7 +15,7 @@ import json
 from collections import defaultdict
 
 DATA_PATH = "data/raw/drucksache"
-TERM_FILE = "config/term_list.json"
+TERM_FILE = "data/term_list.json"
 
 
 def load_terms():
