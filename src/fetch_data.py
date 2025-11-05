@@ -63,12 +63,7 @@ def fetch_data():
                 params["f.datum.start"] = date_range["from"]
             if date_range.get("to"):
                 params["f.datum.end"] = date_range["to"]
-        else:
-            if date_range.get("from"):
-                params["f.aktualisiert.start"] = date_range["from"]
-            if date_range.get("to"):
-                params["f.aktualisiert.end"] = date_range["to"]
-
+       
         page = 1
         while True:
             try:
