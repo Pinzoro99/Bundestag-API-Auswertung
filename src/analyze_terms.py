@@ -19,7 +19,7 @@ from datetime import datetime
 
 # Pfade
 RAW_PATH = "data/raw/drucksache"
-TERM_FILE = "config/term_list.json"
+TERM_FILE = "data/term_list.json"
 
 # 1) Begriffsliste laden
 def load_term_lists():
