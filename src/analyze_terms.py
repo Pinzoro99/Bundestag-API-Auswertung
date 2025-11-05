@@ -1,89 +1,103 @@
-"""
-analyze_terms.py
------------------
-Dieses Skript führt die Keyword-Frequenzanalyse und Zeitreihenaggregation durch.
-
-Abhängigkeiten:
-- data/processed/combined_texts.json
-- data/term_list.json
-- utils.py
-"""
-
 import json
+import os
 import re
-import pandas as pd
-from utils import load_json, save_csv
+from pathlib import Path
+from datetime import datetime
 
-# TODO:
-# 1. Keywords aus data/term_list.json laden
-# 2. Texte aus data/processed/combined_texts.json laden
-# 3. Frequenzen pro Jahr und Cluster zählen
-# 4. Ergebnisse als yearly_keyword_counts.csv und yearly_cluster_sums.csv speichern
-# 5. Verhältnisindikator R_t berechnen und speichern
+# Ordner mit den heruntergeladenen Drucksachen
+RAW_DIR = Path("data/raw/drucksache")
 
-def analyze_terms():
-    """
-    Zählt definierte Keywords und erstellt jährliche Statistiken.
-    """
-    term_data = load_json("data/term_list.json")
-    combined_texts = load_json("data/processed/combined_texts.json")
+# Ausgabeordner
+RESULTS_DIR = Path("data/results")
+RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
-    records = []
+# Suchmuster (sehr grob, kannst du später fein machen)
+ECO_TERMS = [
+    r"klima", r"klimaschutz", r"klimakonferenz", r"umwelt",
+    r"nachhaltig", r"naturschutz", r"energie", r"biodiversität"
+]
 
-    for document in combined_texts:
-        jahr = document.get("jahr")
-        if jahr is None:
-            continue
+SEC_TERMS = [
+    r"sicherheits", r"sicherheit", r"cyber", r"resilienz",
+    r"kritische anlage", r"kritische infrastr", r"zivile sicherheit",
+    r"krisenlage", r"abwehr"
+]
 
-        text = document.get("text", "")
-        for cluster, cluster_info in term_data.items():
-            keywords = cluster_info.get("keywords", [])
-            for keyword in keywords:
-                pattern = re.compile(rf"\b{re.escape(keyword)}\b", flags=re.IGNORECASE)
-                count = len(pattern.findall(text))
-                if count > 0:
-                    records.append(
-                        {
-                            "year": jahr,
-                            "cluster": cluster,
-                            "keyword": keyword,
-                            "count": count,
-                        }
-                    )
+def match_any(patterns, text):
+    text_l = text.lower()
+    for pat in patterns:
+        if re.search(pat, text_l):
+            return True
+    return False
 
-    if not records:
-        keyword_counts_df = pd.DataFrame(columns=["year", "cluster", "keyword", "count"])
-    else:
-        keyword_counts_df = pd.DataFrame(records)
-        keyword_counts_df = (
-            keyword_counts_df.groupby(["year", "cluster", "keyword"], as_index=False)["count"].sum()
-        )
+def main():
+    eco_count = 0
+    sec_count = 0
+    total_docs = 0
 
-    cluster_sums_df = (
-        keyword_counts_df.groupby(["year", "cluster"], as_index=False)["count"].sum()
-        if not keyword_counts_df.empty
-        else pd.DataFrame(columns=["year", "cluster", "count"])
-    )
+    # optional: nach Jahr gruppieren
+    per_year = {}
 
-    pivot = cluster_sums_df.pivot(index="year", columns="cluster", values="count") if not cluster_sums_df.empty else pd.DataFrame()
-    pivot = pivot.fillna(0)
+    for json_file in RAW_DIR.glob("*.json"):
+        with json_file.open("r", encoding="utf-8") as f:
+            data = json.load(f)
 
-    resilience_series = pivot.get("sicherheit_resilienz", pd.Series(0, index=pivot.index))
-    ecology_series = pivot.get("oekologie_nachhaltigkeit", pd.Series(0, index=pivot.index))
+        documents = data.get("documents", [])
+        for doc in documents:
+            total_docs += 1
+            title = doc.get("titel") or ""
+            datum = doc.get("datum") or ""
+            # Jahr rausziehen
+            year = None
+            if datum:
+                try:
+                    year = datetime.fromisoformat(datum).year
+                except ValueError:
+                    # manchmal nur YYYY-MM-DD → geht auch
+                    try:
+                        year = datetime.strptime(datum, "%Y-%m-%d").year
+                    except ValueError:
+                        year = None
 
-    ratio_series = resilience_series.divide(ecology_series.replace(0, pd.NA))
-    relative_ratios_df = pd.DataFrame(
-        {
-            "year": pivot.index,
-            "ratio": ratio_series,
-            "sicherheit_resilienz": resilience_series,
-            "oekologie_nachhaltigkeit": ecology_series,
-        }
-    ).reset_index(drop=True)
+            is_eco = match_any(ECO_TERMS, title)
+            is_sec = match_any(SEC_TERMS, title)
 
-    save_csv(keyword_counts_df, "data/results/yearly_keyword_counts.csv")
-    save_csv(cluster_sums_df, "data/results/yearly_cluster_sums.csv")
-    save_csv(relative_ratios_df, "data/results/relative_ratios.csv")
+            # global zählen
+            if is_eco:
+                eco_count += 1
+            if is_sec:
+                sec_count += 1
+
+            # pro Jahr zählen
+            if year:
+                if year not in per_year:
+                    per_year[year] = {"eco": 0, "sec": 0, "total": 0}
+                per_year[year]["total"] += 1
+                if is_eco:
+                    per_year[year]["eco"] += 1
+                if is_sec:
+                    per_year[year]["sec"] += 1
+
+    # einfache Textausgabe
+    print("Gesamtzahl Dokumente:", total_docs)
+    print("Treffer Ökologie/Nachhaltigkeit:", eco_count)
+    print("Treffer Sicherheit/Resilienz:", sec_count)
+    print()
+    print("Pro Jahr:")
+    for year in sorted(per_year.keys()):
+        y = per_year[year]
+        print(f"{year}: total={y['total']}, eco={y['eco']}, sec={y['sec']}")
+
+    # zusätzlich als CSV speichern
+    csv_path = RESULTS_DIR / "term_counts_by_year.csv"
+    with csv_path.open("w", encoding="utf-8") as f:
+        f.write("year,total,eco,sec\n")
+        for year in sorted(per_year.keys()):
+            y = per_year[year]
+            f.write(f"{year},{y['total']},{y['eco']},{y['sec']}\n")
+
+    print(f"\nErgebnisse gespeichert unter: {csv_path}")
 
 if __name__ == "__main__":
-    analyze_terms()
+    main()
+
