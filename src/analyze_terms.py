@@ -1,103 +1,94 @@
-import json
+"""
+analyze_terms.py
+-----------------
+Analysiert Bundestags-Dokumente (JSON) nach thematischen Schlagworten.
+Zählt pro Jahr, wie viele Dokumente folgende Themenfelder enthalten:
+- ausschließlich Ökologie/Nachhaltigkeit
+- ausschließlich Sicherheit/Resilienz
+- beide Themenfelder gleichzeitig (Überschneidung)
+"""
+
 import os
-import re
-from pathlib import Path
+import json
+from collections import defaultdict
 from datetime import datetime
 
-# Ordner mit den heruntergeladenen Drucksachen
-RAW_DIR = Path("data/raw/drucksache")
+RAW_PATH = "data/raw/drucksache"
 
-# Ausgabeordner
-RESULTS_DIR = Path("data/results")
-RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+# Suchbegriffe (je Themenfeld)
+ECO_TERMS = ["nachhaltigkeit", "klima", "ökologie", "umweltschutz", "erneuerbar"]
+SEC_TERMS = ["sicherheit", "resilienz", "krise", "notfall", "vorsorge"]
 
-# Suchmuster (sehr grob, kannst du später fein machen)
-ECO_TERMS = [
-    r"klima", r"klimaschutz", r"klimakonferenz", r"umwelt",
-    r"nachhaltig", r"naturschutz", r"energie", r"biodiversität"
-]
+def extract_schlagworte(doc):
+    """Extrahiert Schlagworte aus dem Dokument (kleingeschrieben)."""
+    terms = []
+    for s in doc.get("schlagworte", []):
+        if isinstance(s, dict) and "begriff" in s:
+            terms.append(s["begriff"].lower())
+        elif isinstance(s, str):
+            terms.append(s.lower())
+    return terms
 
-SEC_TERMS = [
-    r"sicherheits", r"sicherheit", r"cyber", r"resilienz",
-    r"kritische anlage", r"kritische infrastr", r"zivile sicherheit",
-    r"krisenlage", r"abwehr"
-]
+def analyze_documents():
+    counts = defaultdict(lambda: {
+        "total": 0,
+        "eco_only": 0,
+        "sec_only": 0,
+        "mixed": 0
+    })
 
-def match_any(patterns, text):
-    text_l = text.lower()
-    for pat in patterns:
-        if re.search(pat, text_l):
-            return True
-    return False
-
-def main():
-    eco_count = 0
-    sec_count = 0
-    total_docs = 0
-
-    # optional: nach Jahr gruppieren
-    per_year = {}
-
-    for json_file in RAW_DIR.glob("*.json"):
-        with json_file.open("r", encoding="utf-8") as f:
+    for file in os.listdir(RAW_PATH):
+        if not file.endswith(".json"):
+            continue
+        path = os.path.join(RAW_PATH, file)
+        with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
-
-        documents = data.get("documents", [])
-        for doc in documents:
-            total_docs += 1
-            title = doc.get("titel") or ""
-            datum = doc.get("datum") or ""
-            # Jahr rausziehen
-            year = None
-            if datum:
-                try:
-                    year = datetime.fromisoformat(datum).year
-                except ValueError:
-                    # manchmal nur YYYY-MM-DD → geht auch
+            for doc in data.get("documents", []):
+                # Jahr bestimmen
+                year = "unbekannt"
+                date_str = doc.get("datum") or doc.get("aktualisiert")
+                if date_str:
                     try:
-                        year = datetime.strptime(datum, "%Y-%m-%d").year
-                    except ValueError:
-                        year = None
+                        year = str(datetime.fromisoformat(date_str.replace("Z", "+00:00")).year)
+                    except Exception:
+                        pass
 
-            is_eco = match_any(ECO_TERMS, title)
-            is_sec = match_any(SEC_TERMS, title)
+                counts[year]["total"] += 1
 
-            # global zählen
-            if is_eco:
-                eco_count += 1
-            if is_sec:
-                sec_count += 1
+                # Schlagworte extrahieren
+                schlagworte = extract_schlagworte(doc)
+                text = " ".join(schlagworte)
 
-            # pro Jahr zählen
-            if year:
-                if year not in per_year:
-                    per_year[year] = {"eco": 0, "sec": 0, "total": 0}
-                per_year[year]["total"] += 1
-                if is_eco:
-                    per_year[year]["eco"] += 1
-                if is_sec:
-                    per_year[year]["sec"] += 1
+                # Thema prüfen
+                has_eco = any(term in text for term in ECO_TERMS)
+                has_sec = any(term in text for term in SEC_TERMS)
 
-    # einfache Textausgabe
-    print("Gesamtzahl Dokumente:", total_docs)
-    print("Treffer Ökologie/Nachhaltigkeit:", eco_count)
-    print("Treffer Sicherheit/Resilienz:", sec_count)
-    print()
-    print("Pro Jahr:")
-    for year in sorted(per_year.keys()):
-        y = per_year[year]
-        print(f"{year}: total={y['total']}, eco={y['eco']}, sec={y['sec']}")
+                # Kategorisierung
+                if has_eco and has_sec:
+                    counts[year]["mixed"] += 1
+                elif has_eco:
+                    counts[year]["eco_only"] += 1
+                elif has_sec:
+                    counts[year]["sec_only"] += 1
 
-    # zusätzlich als CSV speichern
-    csv_path = RESULTS_DIR / "term_counts_by_year.csv"
-    with csv_path.open("w", encoding="utf-8") as f:
-        f.write("year,total,eco,sec\n")
-        for year in sorted(per_year.keys()):
-            y = per_year[year]
-            f.write(f"{year},{y['total']},{y['eco']},{y['sec']}\n")
-
-    print(f"\nErgebnisse gespeichert unter: {csv_path}")
+    return counts
 
 if __name__ == "__main__":
-    main()
+    result = analyze_documents()
 
+    total_docs = sum(y["total"] for y in result.values())
+    eco_only_total = sum(y["eco_only"] for y in result.values())
+    sec_only_total = sum(y["sec_only"] for y in result.values())
+    mixed_total = sum(y["mixed"] for y in result.values())
+
+    print(f"Gesamtzahl Dokumente: {total_docs}")
+    print(f"Nur Ökologie/Nachhaltigkeit: {eco_only_total}")
+    print(f"Nur Sicherheit/Resilienz: {sec_only_total}")
+    print(f"Beide Themenfelder (Überschneidung): {mixed_total}\n")
+
+    print("Pro Jahr:")
+    for year, stats in sorted(result.items()):
+        print(
+            f"{year}: total={stats['total']}, eco_only={stats['eco_only']}, "
+            f"sec_only={stats['sec_only']}, mixed={stats['mixed']}"
+        )
