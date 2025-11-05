@@ -15,9 +15,18 @@ from datetime import datetime
 
 RAW_PATH = "data/raw/drucksache"
 
-# Suchbegriffe (je Themenfeld)
-ECO_TERMS = ["nachhaltigkeit", "klima", "ökologie", "umweltschutz", "erneuerbar"]
-SEC_TERMS = ["sicherheit", "resilienz", "krise", "notfall", "vorsorge"]
+# Begriffslisten aus JSON laden
+TERM_FILE = "config/term_list.json"
+
+try:
+    with open(TERM_FILE, "r", encoding="utf-8") as f:
+        term_data = json.load(f)
+        ECO_TERMS = [t.lower() for t in term_data.get("Ökologie/Nachhaltigkeit", [])]
+        SEC_TERMS = [t.lower() for t in term_data.get("Sicherheit/Resilienz", [])]
+except FileNotFoundError:
+    print(f"⚠️  term_list.json nicht gefunden unter {TERM_FILE}, benutze Standardbegriffe.")
+    ECO_TERMS = ["nachhaltigkeit", "klima", "ökologie", "umweltschutz", "erneuerbar"]
+    SEC_TERMS = ["sicherheit", "resilienz", "krise", "notfall", "vorsorge"]
 
 def extract_schlagworte(doc):
     """Extrahiert Schlagworte aus dem Dokument (kleingeschrieben)."""
