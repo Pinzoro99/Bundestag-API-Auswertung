@@ -29,7 +29,9 @@
 
   "logging": {
     "enable_console_output": true,
-    "log_file": "logs/api_fetch.log"
+    "log_file": "logs/api_fetch.log",
+    "log_level": "INFO" 
+  /* Mögliche Werte: DEBUG, INFO, WARNING, ERROR */
   },
 
   "notes": "Diese Konfigurationsdatei definiert die grundlegenden Parameter für den Abruf und die Speicherung von Bundestags-Dokumenten über die DIP-API. Der Zeitraum wird dynamisch gelesen und kann bei Bedarf angepasst werden."
