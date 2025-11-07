@@ -1,77 +1,57 @@
-# 02 – Query Design
+# 02 – Query Design (Optimiert für Dokumenten-Klassifikation)
 
-**Ziel:**  
-Untersuchung der quantitativen Entwicklung zentraler Begriffe in Bundestagsdokumenten von 2019 bis 2025, um zu erkennen, ob sich thematische Prioritäten von ökologischen und nachhaltigen Themen hin zu sicherheits- und resilienzbezogenen Themen verschieben.
+**Ziel:**
+Untersuchung der **Verbreitung** von ökologisch-nachhaltigen sowie versorgungs- und resilienzbezogenen Themen in Bundestags-Drucksachen (Titel-Ebene) von 2019 bis 2025. Die Analyse soll feststellen, ob sich thematische Prioritäten in den Dokumenten verschieben (gemessen am Anteil der Kategorien 'sec_hit', 'mixed' und 'eco_hit').
 
 ---
 
 ## Überblick
 
-Diese Datei beschreibt die geplante Abfragelogik und Verarbeitung der Bundestags-DIP-API-Daten.  
-Ziel ist **nicht** die inhaltliche Klassifikation einzelner Dokumente, sondern die **Ermittlung der Häufigkeit und Entwicklung spezifischer Begriffe und Themencluster** über den Zeitverlauf.
+Diese Datei beschreibt die geplante Abfragelogik und Verarbeitung. Das zentrale Ziel ist die **eindeutige Klassifikation jedes Dokuments** anhand seines Titels in eine von vier Kategorien.
 
 ---
 
 ## Schritt 1 – Datenerhebung
 
-1. Abfrage der Endpunkte `/drucksache` und `/vorgang` für den Zeitraum **2019–2025**.  
-2. Speicherung der Ergebnisse als JSON-Dateien unter `data/raw/` (eine Datei pro Jahr oder pro API-Seite).  
-3. Verwendung des Parameters `cursor` zur Paginierung.  
-4. API-Key über Umgebungsvariable `DIP_API_KEY`.  
-5. Relevante Felder werden in `specs/03_field_mapping.md` definiert.
+1. Abfrage des Endpunkts **`/drucksache`** für den Zeitraum **2019–2025**. (Der Endpunkt `/vorgang` wird nicht mehr benötigt).
+2. Speicherung der Rohdaten als JSON-Dateien unter `data/raw/` (eine Datei pro Jahr oder pro API-Seite).
+3. Verwendung des Parameters `cursor` zur Paginierung.
+4. API-Key über Umgebungsvariable `DIP_API_KEY`.
+5. Nur die **minimalen Felder** (`id`, `datum`, `titel`, `typ`, `urheber`) werden gemäß `specs/03_field_mapping.md` extrahiert.
 
 ---
 
-## Schritt 2 – Zusammenführung der Daten
+## Schritt 2 – Datenaufbereitung (Fokus auf Titel)
 
-- Zusammenführen von `/drucksache` und `/vorgang` über die gemeinsame `vorgangsId`.  
-- Extraktion der relevanten Textfelder:
-  - `titel`
-  - `abstract`
-  - `schlagwort`
-  - `sachgebiet`
-- Bildung eines kombinierten Textfeldes je Dokument:
-  ```text
-  text = titel + " " + abstract + " " + join(schlagwort) + " " + join(sachgebiet)
-  ```
-- Speicherung als strukturierte JSON- oder CSV-Datei (`data/processed/combined_texts.json`).
+1. **Kein Zusammenführen von Drucksache und Vorgang.** Die Daten sind bereits in den Drucksachen enthalten.
+2. **Extraktion und Bereinigung des Titels:** Für jedes Dokument wird nur das Feld **`titel`** extrahiert.
+3. Der Titel-String wird zur Analyse in **Kleinbuchstaben** konvertiert.
+4. Speicherung der bereinigten Daten mit den relevanten Metadaten als strukturierte JSON- oder CSV-Datei (`data/processed/processed_documents.csv`).
 
 ---
 
-## Schritt 3 – Keyword-Frequenzanalyse
+## Schritt 3 – Dokumenten-Klassifikation (Kernanalyse)
 
-1. Laden der Keyword-Liste aus `data/term_list.json`.  
-   Die Liste enthält zwei Cluster:
-   - `oekologie_nachhaltigkeit`
-   - `sicherheit_resilienz`
-2. Für jedes Jahr:
-   - Zählen, wie häufig **jedes einzelne Keyword oder eine seiner Varianten** in den Textfeldern vorkommt.  
-   - Aggregation der Häufigkeiten je Cluster und Jahr.
-3. Ergebnisse speichern in einer tabellarischen Struktur, z. B.:
-
-| Jahr | Begriff | Cluster | Häufigkeit |
-|------|----------|----------|-------------|
-| 2019 | Nachhaltigkeit | oekologie_nachhaltigkeit | 284 |
-| 2019 | Resilienz | sicherheit_resilienz | 15 |
-| 2020 | Klimaschutz | oekologie_nachhaltigkeit | 312 |
-| 2020 | Versorgungssicherheit | sicherheit_resilienz | 47 |
-
-4. Optional: Berechnung relativer Häufigkeiten (z. B. Anteil pro 1.000 Wörter oder pro 100 Dokumente).
+1. Laden der Keyword-Liste aus `data/term_list.json` (Cluster: `oekologie_nachhaltigkeit` und `sicherheit_resilienz`).
+2. Für **jedes Dokument** (Titel):
+    - Prüfen, ob **mindestens ein** Ökologie-Keyword enthalten ist (`eco_found` = True/False).
+    - Prüfen, ob **mindestens ein** Resilienz-Keyword enthalten ist (`sec_found` = True/False).
+3. **Zuweisung der finalen Kategorie** anhand der Booleans:
+    - **`mixed`**: `eco_found` AND `sec_found`
+    - **`eco_hit`**: `eco_found` AND NOT `sec_found`
+    - **`sec_hit`**: NOT `eco_found` AND `sec_found`
+    - **`none`**: NOT `eco_found` AND NOT `sec_found`
+4. Speicherung einer Tabelle mit **Dokumenten-ID, Datum und zugeordneter Kategorie**.
 
 ---
 
-## Schritt 4 – Zeitreihenanalyse
+## Schritt 4 – Zeitreihenanalyse (Aggregation der Verbreitung)
 
-- Aggregation der jährlichen Summen pro Cluster:
-  ```text
-  sum_oeko[year] = Σ(freq of all oekologie_nachhaltigkeit terms)
-  sum_resi[year] = Σ(freq of all sicherheit_resilienz terms)
-  ```
-- Darstellung als Zeitreihe:
-  - Entwicklung der absoluten Häufigkeiten (z. B. Liniengrafik)
-  - Verhältnisindikator:  
-    **Rₜ = (Summe Resilienz/Sicherheit) ÷ (Summe Nachhaltigkeit/Ökologie)**
-  - Ein Rₜ > 1 zeigt eine relative Dominanz der Resilienz-/Sicherheitssemantik in diesem Jahr.
+1. Aggregation der Ergebnisse nach **Jahr und Kategorie**.
+2. **Zeitreihen-Datenpunkt:** Die zentrale Metrik ist die **Anzahl der Dokumente pro Kategorie und Jahr**.
+3. Darstellung als Zeitreihe:
+    - Entwicklung der absoluten Anzahl der Dokumente je Kategorie (Liniengrafik).
+    - **Anteil-Analyse:** Entwicklung des **prozentualen Anteils** von `mixed` und `sec_hit` an allen Themen-Dokumenten (`mixed` + `eco_hit` + `sec_hit`) pro Jahr.
 
 ---
 
@@ -83,30 +63,10 @@ Die Resultate sollen unter `data/results/` abgelegt werden:
 data/
  ├─ raw/
  ├─ processed/
- │   └─ combined_texts.json
+ │   └─ processed_documents.csv (Titel, Datum, Metadaten)
  └─ results/
-     ├─ yearly_keyword_counts.csv
-     ├─ yearly_cluster_sums.csv
-     └─ relative_ratios.csv
-```
-
----
-
-## Schritt 6 – Erweiterbarkeit
-
-- Weitere Cluster können ergänzt werden (z. B. „Wirtschaft“, „Soziales“, „Gesundheit“).  
-- Eine spätere qualitative Kontextanalyse (z. B. Kookkurrenzen oder Satzebene) kann auf Basis derselben Daten erfolgen.  
-- Optional: Integration von Stemming/Lemmatisierung zur robusteren Worterkennung.
-
----
-
-## Fazit
-
-Diese Pipeline dient der **deskriptiven Analyse politischer Themensetzung** im Bundestag, gemessen an der **zeitlichen Frequenz und semantischen Entwicklung definierter Schlüsselbegriffe**.  
-Die Dokumente selbst werden **nicht klassifiziert**, sondern als Textträger für die Erfassung thematischer Trends verwendet.
-
-
-
+     ├─ classified_documents.csv (Dokument-ID, Datum, final_category)
+     └─ yearly_category_counts.csv (Jahr, eco_hit_count, sec_hit_count, mixed_count, none_count)
 
 
   
