@@ -2,8 +2,8 @@
   "api_base_url": "https://search.dip.bundestag.de/api/v1",
 
   "endpoints": {
-    "drucksache": "/drucksache",
-    "vorgang": "/vorgang"
+    "primary_source": "/drucksache" 
+    /* Fokus liegt nur noch auf Drucksachen für Titelanalyse */
   },
 
   "date_range": {
